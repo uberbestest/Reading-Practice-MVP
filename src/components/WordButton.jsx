@@ -1,14 +1,12 @@
-export function WordButton({ word, onClick }) {
-  const spokenWord = word.replace(/[^a-zA-Z0-9]/g, "");
-
+export function WordButton({ wordToken, onClick }) {
   return (
     <button
       className="word-button"
       type="button"
       onClick={onClick}
-      aria-label={`Hear the word ${spokenWord}`}
+      aria-label={`Hear the word ${wordToken.speak}`}
     >
-      {word}
+      {wordToken.display}
     </button>
   );
 }

@@ -147,6 +147,17 @@ h1 {
   margin-top: 34px;
 }
 
+.speech-status {
+  color: #4c5b66;
+  font-size: 1rem;
+  font-weight: 800;
+  margin: 18px 0 0;
+}
+
+.speech-status-supported {
+  color: #2d6a4f;
+}
+
 .feedback {
   background: #ffffff;
   border-left: 8px solid #277da1;

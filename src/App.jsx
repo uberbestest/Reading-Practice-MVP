@@ -6,6 +6,7 @@ import { sentences } from "./data/sentences.js";
 import { compareReading } from "./lib/compareReading.js";
 import { listenOnce, supportsSpeechRecognition } from "./lib/speechRecognition.js";
 import { speakText } from "./lib/speechSynthesis.js";
+import { createWordTokens } from "./lib/wordTokens.js";
 
 const initialFeedback = {
   kind: "idle",
@@ -18,10 +19,11 @@ function App() {
   const [isListening, setIsListening] = useState(false);
 
   const sentence = sentences[sentenceIndex];
-  const words = useMemo(() => sentence.split(" "), [sentence]);
+  const wordTokens = useMemo(() => createWordTokens(sentence), [sentence]);
+  const speechRecognitionSupported = supportsSpeechRecognition();
 
-  function handleSpeakWord(word) {
-    speakText(word);
+  function handleSpeakWord(wordToken) {
+    speakText(wordToken.speak);
   }
 
   function handleReadToMe() {
@@ -50,7 +52,7 @@ function App() {
       } else {
         setFeedback({
           kind: "try-again",
-          message: `Almost. Try this word again: ${result.word}.`,
+          message: `Almost. Try this word again: "${result.word}".`,
         });
       }
     } catch (error) {
@@ -80,9 +82,19 @@ function App() {
 
         <SentenceCard
           sentence={sentence}
-          words={words}
+          wordTokens={wordTokens}
           onSpeakWord={handleSpeakWord}
         />
+
+        <p
+          className={`speech-status ${
+            speechRecognitionSupported ? "speech-status-supported" : ""
+          }`}
+        >
+          {speechRecognitionSupported
+            ? "Speech recognition supported"
+            : "Speech recognition not supported"}
+        </p>
 
         <Controls
           isListening={isListening}

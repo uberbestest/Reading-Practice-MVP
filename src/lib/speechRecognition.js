@@ -15,7 +15,13 @@ export function listenOnce() {
 
   return new Promise((resolve, reject) => {
     const recognition = new SpeechRecognition();
-    let didResolve = false;
+    let didSettle = false;
+
+    function settle(callback, value) {
+      if (didSettle) return;
+      didSettle = true;
+      callback(value);
+    }
 
     recognition.lang = "en-US";
     recognition.continuous = false;
@@ -23,20 +29,17 @@ export function listenOnce() {
     recognition.maxAlternatives = 1;
 
     recognition.onresult = (event) => {
-      didResolve = true;
       const transcript = event.results?.[0]?.[0]?.transcript || "";
+      settle(resolve, transcript);
       recognition.stop();
-      resolve(transcript);
     };
 
     recognition.onerror = (event) => {
-      reject({ code: event.error || "recognition-error" });
+      settle(reject, { code: event.error || "recognition-error" });
     };
 
     recognition.onend = () => {
-      if (!didResolve) {
-        reject({ code: "no-speech" });
-      }
+      settle(reject, { code: "no-speech" });
     };
 
     recognition.start();
