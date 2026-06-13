@@ -15,7 +15,8 @@ the browser supports it.
 - Lets the learner try reading aloud with `Now you try` when speech recognition
   is available.
 - Gives gentle feedback after the attempt.
-- Cycles through a tiny built-in sentence bank.
+- Cycles through a built-in sentence bank of a few hundred short early-reader
+  phrases.
 
 ## What It Does Not Do
 
@@ -46,11 +47,9 @@ npm run build
 
 ## Current Sentence Bank
 
-- The cat can sit.
-- I see a red ball.
-- We can go up.
-- The dog is big.
-- She has a book.
+The sentence bank starts with the original five MVP examples and expands into a
+few hundred short early-reader phrases using simple nouns, common verbs, colors,
+basic feelings, home objects, animals, and outdoor words.
 
 ## Architecture
 
