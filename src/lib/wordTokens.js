@@ -1,9 +1,9 @@
 export function stripWordPunctuation(word) {
-  return word.replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, "");
+  return String(word).replace(/^[^a-zA-Z0-9']+|[^a-zA-Z0-9']+$/g, "");
 }
 
 export function createWordTokens(sentence) {
-  return sentence
+  return String(sentence)
     .split(/\s+/)
     .map((word) => ({
       display: stripWordPunctuation(word),

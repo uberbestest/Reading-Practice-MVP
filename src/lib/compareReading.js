@@ -1,7 +1,7 @@
 function normalizeText(text) {
-  return text
+  return String(text ?? "")
     .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/[^a-z0-9'\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -35,7 +35,7 @@ function editDistance(a, b) {
 
 function wordsAreClose(targetWord, spokenWord) {
   if (targetWord === spokenWord) return true;
-  if (targetWord.length <= 3) return false;
+  if (targetWord.length <= 3 || spokenWord.length <= 3) return false;
   return editDistance(targetWord, spokenWord) <= 1;
 }
 
@@ -44,28 +44,44 @@ export function compareReading(targetSentence, spokenSentence) {
   const spokenWords = wordsFrom(spokenSentence);
 
   if (targetWords.length === 0) {
-    return { status: "correct" };
+    return { status: "empty-target", targetWords, spokenWords, matched: [] };
   }
 
+  const matched = [];
+  const missing = [];
   let spokenIndex = 0;
 
   for (const targetWord of targetWords) {
-    let foundWord = false;
+    let matchIndex = -1;
 
-    while (spokenIndex < spokenWords.length) {
-      if (wordsAreClose(targetWord, spokenWords[spokenIndex])) {
-        foundWord = true;
-        spokenIndex += 1;
+    for (let index = spokenIndex; index < spokenWords.length; index += 1) {
+      if (wordsAreClose(targetWord, spokenWords[index])) {
+        matchIndex = index;
         break;
       }
-
-      spokenIndex += 1;
     }
 
-    if (!foundWord) {
-      return { status: "almost", word: targetWord };
+    if (matchIndex === -1) {
+      missing.push(targetWord);
+      continue;
     }
+
+    matched.push({ target: targetWord, heard: spokenWords[matchIndex] });
+    spokenIndex = matchIndex + 1;
   }
 
-  return { status: "correct" };
+  const coverage = targetWords.length
+    ? matched.length / targetWords.length
+    : 0;
+
+  return {
+    status: missing.length === 0 ? "heard-all-target-words" : "heard-some-target-words",
+    targetWords,
+    spokenWords,
+    matched,
+    missing,
+    coverage,
+  };
 }
+
+export { normalizeText };
