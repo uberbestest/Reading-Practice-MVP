@@ -1,111 +1,101 @@
 import { useMemo, useState } from "react";
-import { Controls } from "./components/Controls.jsx";
-import { Feedback } from "./components/Feedback.jsx";
-import { SentenceCard } from "./components/SentenceCard.jsx";
-import { sentences } from "./data/sentences.js";
-import { compareReading } from "./lib/compareReading.js";
-import { listenOnce, supportsSpeechRecognition } from "./lib/speechRecognition.js";
+import { About } from "./components/About.jsx";
+import { CourseMap } from "./components/CourseMap.jsx";
+import { LessonView } from "./components/LessonView.jsx";
+import { PathPicker } from "./components/PathPicker.jsx";
+import { TopBar } from "./components/TopBar.jsx";
+import { course, getLesson } from "./data/curriculum.js";
+import { clearProgress, loadProgress, saveProgress } from "./lib/progress.js";
+import { completeLesson, setLearningPath, setSpeechRate } from "./lib/progressModel.js";
 import { speakText } from "./lib/speechSynthesis.js";
-import { createWordTokens } from "./lib/wordTokens.js";
-
-const initialFeedback = {
-  kind: "idle",
-  message: "Tap a word, or listen to the sentence.",
-};
 
 function App() {
-  const [sentenceIndex, setSentenceIndex] = useState(0);
-  const [feedback, setFeedback] = useState(initialFeedback);
-  const [isListening, setIsListening] = useState(false);
+  const [screen, setScreen] = useState("course");
+  const [activeLessonId, setActiveLessonId] = useState(null);
+  const [progress, setProgress] = useState(() => loadProgress());
 
-  const sentence = sentences[sentenceIndex];
-  const wordTokens = useMemo(() => createWordTokens(sentence), [sentence]);
-  const speechRecognitionSupported = supportsSpeechRecognition();
+  const activeLesson = useMemo(
+    () => (activeLessonId ? getLesson(activeLessonId) : null),
+    [activeLessonId],
+  );
 
-  function handleSpeakWord(wordToken) {
-    speakText(wordToken.speak);
+  function updateProgress(next) {
+    setProgress(next);
+    saveProgress(next);
   }
 
-  function handleReadToMe() {
-    speakText(sentence);
-    setFeedback({ kind: "idle", message: "Listen, then try reading it." });
+  function navigate(nextScreen) {
+    setActiveLessonId(null);
+    setScreen(nextScreen);
+    window.scrollTo({ top: 0, behavior: "auto" });
   }
 
-  async function handleTryReading() {
-    if (!supportsSpeechRecognition()) {
-      setFeedback({
-        kind: "unsupported",
-        message: "Speech recognition is not supported in this browser.",
-      });
-      return;
-    }
-
-    setIsListening(true);
-    setFeedback({ kind: "listening", message: "Listening..." });
-
-    try {
-      const transcript = await listenOnce();
-      const result = compareReading(sentence, transcript);
-
-      if (result.status === "correct") {
-        setFeedback({ kind: "success", message: "Nice, you got it." });
-      } else {
-        setFeedback({
-          kind: "try-again",
-          message: `Almost. Try this word again: "${result.word}".`,
-        });
-      }
-    } catch (error) {
-      setFeedback({
-        kind: error.code === "unsupported" ? "unsupported" : "try-again",
-        message:
-          error.code === "unsupported"
-            ? "Speech recognition is not supported in this browser."
-            : "Almost. Try reading it again.",
-      });
-    } finally {
-      setIsListening(false);
-    }
+  function openLesson(lessonId) {
+    setActiveLessonId(lessonId);
+    setScreen("lesson");
+    window.scrollTo({ top: 0, behavior: "auto" });
   }
 
-  function handleNextSentence() {
-    setSentenceIndex((currentIndex) => (currentIndex + 1) % sentences.length);
-    setFeedback(initialFeedback);
-    setIsListening(false);
+  function finishLesson(lessonId) {
+    updateProgress(completeLesson(progress, lessonId));
+    navigate("course");
+  }
+
+  function resetProgress() {
+    clearProgress();
+    const next = loadProgress();
+    setProgress(next);
   }
 
   return (
-    <main className="app-shell" aria-labelledby="app-title">
-      <section className="practice-panel">
-        <p className="eyebrow">Reading practice</p>
-        <h1 id="app-title">Read the sentence</h1>
+    <div className="app-shell">
+      <TopBar screen={screen} onNavigate={navigate} />
 
-        <SentenceCard
-          sentence={sentence}
-          wordTokens={wordTokens}
-          onSpeakWord={handleSpeakWord}
+      {screen === "course" ? (
+        <main className="page-shell">
+          <CourseMap
+            course={course}
+            completedLessonIds={progress.completedLessonIds}
+            onOpenLesson={openLesson}
+            path={progress.path}
+          />
+          <PathPicker
+            value={progress.path}
+            onChange={(path) => updateProgress(setLearningPath(progress, path))}
+          />
+          <section className="boundary-card">
+            <strong>Practice, not a verdict.</strong>
+            <span>{course.evidenceBoundary}</span>
+          </section>
+        </main>
+      ) : null}
+
+      {screen === "lesson" && activeLesson ? (
+        <LessonView
+          lesson={activeLesson}
+          isComplete={progress.completedLessonIds.includes(activeLesson.id)}
+          speechRate={progress.speechRate}
+          onSpeak={(text, rate) => speakText(text, { rate })}
+          onBack={() => navigate("course")}
+          onComplete={finishLesson}
+          path={progress.path}
         />
+      ) : null}
 
-        <p
-          className={`speech-status ${
-            speechRecognitionSupported ? "speech-status-supported" : ""
-          }`}
-        >
-          {speechRecognitionSupported
-            ? "Speech recognition supported"
-            : "Speech recognition not supported"}
-        </p>
-
-        <Controls
-          isListening={isListening}
-          onReadToMe={handleReadToMe}
-          onTryReading={handleTryReading}
-          onNextSentence={handleNextSentence}
+      {screen === "about" ? (
+        <About
+          course={course}
+          speechRate={progress.speechRate}
+          onSpeechRateChange={(rate) => updateProgress(setSpeechRate(progress, rate))}
+          onResetProgress={resetProgress}
         />
+      ) : null}
 
-        <Feedback feedback={feedback} />
-      </section>
-    </main>
+      <footer className="site-footer">
+        <span>See it · hear it · use it</span>
+        <span>No account · no analytics · local progress only</span>
+      </footer>
+    </div>
   );
 }
 
